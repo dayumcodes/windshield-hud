@@ -1,0 +1,10 @@
+{
+  "name": "Windshield HUD",
+  "short_name": "HUD",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#050607",
+  "theme_color": "#050607",
+  "start_url": "/",
+  "icons": []
+}

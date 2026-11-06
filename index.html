@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Windshield HUD - a heads-up display for any car</title>
+  <meta name="description" content="Free browser heads-up display: GPS speed, speed limits, turn-by-turn directions and compass, mirrored for your windshield. No account, no tracking.">
+  <meta name="theme-color" content="#050607">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050607'/%3E%3Cpath d='M14 40a18 18 0 0 1 36 0' fill='none' stroke='%235cff9d' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M32 40 40 30' stroke='%235cff9d' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- HUD screen -->
+  <div id="hud" class="hud" hidden>
+    <div id="demoBadge" class="demo-badge" hidden>DEMO &middot; SIMULATED DATA</div>
+    <div class="hud-inner" id="hudInner">
+      <div class="hud-wrap layout-a" id="layout">
+        <div class="hud-top">
+          <span id="clock">--:--</span>
+          <span id="curStreet"></span>
+          <span id="navEta"></span>
+        </div>
+        <div class="hud-main">
+          <div class="hud-turn" id="navRow" hidden>
+            <div class="hud-arrow" id="navArrow">&#8593;</div>
+            <div class="hud-nav-dist" id="navDist">--</div>
+            <div class="hud-nav-street" id="navStreet"></div>
+          </div>
+          <div class="hud-speed-col">
+            <div class="hud-speed-row">
+              <span class="hud-speed" id="speed">--</span>
+              <span class="hud-limit" id="limit" hidden><small>SPEED<br>LIMIT</small><span id="limitVal">--</span></span>
+            </div>
+            <div class="hud-unit" id="unit">km/h</div>
+            <div class="hud-heading" id="heading">--</div>
+          </div>
+          <canvas id="miniMap" class="hud-map" width="360" height="360" hidden></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="hud-exit" id="hudExit" hidden>
+      <button id="btnUnmirror" class="pill">Mirror</button>
+      <button id="btnExit" class="pill">Exit HUD</button>
+    </div>
+  </div>
+
+  <!-- Setup / home screen -->
+  <main id="home" class="home">
+    <div class="wrap">
+      <header class="top">
+        <div class="brand"><span class="logo"></span>Windshield HUD</div>
+        <div class="tag">Free &middot; no account &middot; no tracking</div>
+      </header>
+
+      <h1>Your phone is now a <span class="hl">HUD</span>.</h1>
+      <p class="lede">Lay it on the dashboard. Speed, speed limits, turn-by-turn directions and heading glow in the windshield, right where you're already looking.</p>
+
+      <button id="startBtn" class="start">Start HUD</button>
+      <p class="hint">Uses GPS for speed. Best at night. Set it up before you drive.</p>
+
+      <section class="panel">
+        <h2>Destination <span class="opt">(optional)</span></h2>
+        <div class="dest-row">
+          <input id="destInput" type="text" placeholder="Search a place" autocomplete="off">
+          <button id="destGo" class="mini">Go</button>
+        </div>
+        <div id="destResults" class="dest-results"></div>
+        <div id="routeInfo" class="route-info" hidden>
+          <span id="routeSummary"></span>
+          <button id="routeClear" class="mini ghost">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Display</h2>
+        <div class="row">
+          <label>Units</label>
+          <div class="seg" id="segUnit">
+            <button data-v="kmh" class="on">km/h</button><button data-v="mph">mph</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>Color</label>
+          <div class="seg colors" id="segColor">
+            <button data-v="#5cff9d" style="--c:#5cff9d" class="on" aria-label="green"></button>
+            <button data-v="#4dd0ff" style="--c:#4dd0ff" aria-label="blue"></button>
+            <button data-v="#ffd34d" style="--c:#ffd34d" aria-label="amber"></button>
+            <button data-v="#ff5c7a" style="--c:#ff5c7a" aria-label="red"></button>
+            <button data-v="#c792ff" style="--c:#c792ff" aria-label="purple"></button>
+            <button data-v="#ffffff" style="--c:#ffffff" aria-label="white"></button>
+          </div>
+        </div>
+        <div class="row">
+          <label>Layout</label>
+          <div class="seg" id="segLayout">
+            <button data-v="layout-a" class="on">Speed</button><button data-v="layout-b">Speed + nav</button><button data-v="layout-c">Minimal</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>HUD size</label>
+          <input type="range" id="sizeRange" min="70" max="140" value="100">
+        </div>
+        <div class="row">
+          <label>Speedo match</label>
+          <div class="seg" id="segOffset">
+            <button data-v="0" class="on">GPS</button><button data-v="4">+4</button><button data-v="-4">-4</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>Mirror for windshield</label>
+          <div class="seg" id="segMirror">
+            <button data-v="off" class="on">Off</button><button data-v="on">On</button>
+          </div>
+        </div>
+        <div class="row">
+          <label>Lay flat to start</label>
+          <div class="seg" id="segFlat">
+            <button data-v="on" class="on">On</button><button data-v="off">Off</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Safety</h2>
+        <p class="fine">This is a driving aid, not a replacement for your attention. Set it up before you drive, keep your eyes on the road, and follow local laws about phones in cars. Speed limits come from OpenStreetMap and can be missing or wrong - road signs win.</p>
+        <p class="fine">Privacy: everything runs on your phone. Your position is only sent to OpenStreetMap services to read speed limits and plan routes. Nothing is stored anywhere else.</p>
+      </section>
+
+      <footer class="foot">Map data &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a> &middot; Routing: <a href="https://project-osrm.org" rel="noopener">OSRM</a> &middot; Search: <a href="https://photon.komoot.io" rel="noopener">Photon</a> (demo services, best effort)</footer>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
